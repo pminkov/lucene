@@ -18,16 +18,20 @@ package org.apache.lucene.queries.mlt;
 
 import static org.hamcrest.core.Is.is;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -186,6 +190,83 @@ public class TestMoreLikeThis extends LuceneTestCase {
     reader.close();
     dir.close();
     analyzer.close();
+  }
+
+  void printWords(BooleanQuery bq) {
+    int pc = 0;
+    for (BooleanClause clause : bq.clauses()) {
+      if (++pc % 10 == 0) {
+        System.out.println();
+      }
+      var q = clause.getQuery();
+      var tq = (TermQuery) q;
+      System.out.print(tq.getTerm().text() + ", ");
+    }
+    System.out.println();
+  }
+
+  public String removePunctuationFromWord(String word) {
+    StringBuilder sb = new StringBuilder();
+    for (char c : word.toCharArray()) {
+      if (Character.isAlphabetic(c) || c == ' ') {
+        sb.append(c);
+      }
+    }
+    return sb.toString().toLowerCase();
+  }
+
+  public void testTFFix() throws Throwable {
+    var wd = System.getProperty("user.dir");
+
+    var fr = new BufferedReader(new FileReader("/Users/petko.minkov/personal/github/pminkov-lucene/lucene/queries/src/test/plots.txt"));
+    List<String> plots = new ArrayList<>();
+    int cc = 0;
+    while (true) {
+      String line  = fr.readLine();
+      if (line == null) {
+        break;
+      }
+      if (line.length() > 10) {
+        if (++cc % 1000 == 0) {
+          System.out.println(cc);
+        }
+        line = removePunctuationFromWord(line);
+        plots.add(line.substring(1, line.length() - 1));
+      }
+    }
+    plots = plots.stream().sorted(Comparator.comparingInt(String::length).reversed()).collect(Collectors.toList());
+
+    // Write the documents.
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (String plot : plots) {
+      Document doc = new Document();
+      doc.add(newTextField("text", plot, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+    IndexReader reader = writer.getReader();
+
+    mlt = this.getDefaultMoreLikeThis(reader);
+    mlt.setFieldNames(new String[]{"text"});
+    int[] docIds = new int[]{0, 2, 10, 150, 300, 500, 3000, 4000, 5000, 8000, 9000, 10000};
+    for (int docId : docIds) {
+      mlt.withFix = false;
+      var q1 = (BooleanQuery)mlt.like(docId);
+      mlt.withFix = true;
+      var q2 = (BooleanQuery)mlt.like(docId);
+
+      System.out.println("-------------------------------------------------------");
+      System.out.println("docId = " + docId);
+      System.out.println("document length = " + plots.get(docId).length());
+      System.out.println("no fix:");
+      printWords(q1);
+      System.out.println("with fix:");
+      printWords(q2);
+    }
+
+    reader.close();
+    writer.close();
+    dir.close();
   }
 
   public void testBoostFactor() throws Throwable {

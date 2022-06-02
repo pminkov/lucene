@@ -271,6 +271,8 @@ public final class MoreLikeThis {
   /** Boost factor to use when boosting the terms */
   private float boostFactor = 1;
 
+  public boolean withFix = false;
+
   /**
    * Returns the boost factor used when boosting terms
    *
@@ -656,7 +658,7 @@ public final class MoreLikeThis {
           continue; // index update problem?
         }
 
-        float tf = similarity.tf(termFreq);
+        float tf = this.withFix ? similarity.tf(termFreq) : termFreq;
         float idf = similarity.idf(docFreq, numDocs);
         float score = tf * idf;
 
