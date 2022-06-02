@@ -248,7 +248,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
 
     mlt = this.getDefaultMoreLikeThis(reader);
     mlt.setFieldNames(new String[]{"text"});
-    int[] docIds = new int[]{0, 2, 10, 150, 300, 500, 3000, 4000, 5000, 8000, 9000, 10000};
+    int[] docIds = new int[]{0, 2, 10, 150, 300, 400, 500, 600, 700, 3000, 4000, 5000, 8000, 9000, 10000};
     for (int docId : docIds) {
       mlt.withFix = false;
       var q1 = (BooleanQuery)mlt.like(docId);
@@ -258,9 +258,9 @@ public class TestMoreLikeThis extends LuceneTestCase {
       System.out.println("-------------------------------------------------------");
       System.out.println("docId = " + docId);
       System.out.println("document length = " + plots.get(docId).length());
-      System.out.println("no fix:");
+      System.out.println("- no fix:");
       printWords(q1);
-      System.out.println("with fix:");
+      System.out.println("- with fix:");
       printWords(q2);
     }
 
